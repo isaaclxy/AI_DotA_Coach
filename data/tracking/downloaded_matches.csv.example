@@ -1,0 +1,15 @@
+# Example format for downloaded_matches.csv
+# This file tracks all successfully downloaded match files
+# Copy this file to downloaded_matches.csv to initialize the tracking system
+# 
+# Columns:
+# - match_id: OpenDota match ID
+# - start_time: Unix timestamp when match started  
+# - source: Either "matches" (competitive) or "public_matches" (public)
+# - downloaded_time: ISO timestamp when file was downloaded
+# - file_size: JSON file size in bytes
+# - patch: Dota patch number from match metadata
+#
+match_id,start_time,source,downloaded_time,file_size,patch
+8000000000,1751234567,matches,2025-07-12T10:30:15.123456+00:00,52431,58
+7999999999,1751234890,public_matches,2025-07-12T10:31:02.654321+00:00,48923,58

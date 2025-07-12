@@ -1,0 +1,2 @@
+# This file ensures the processed data directory is preserved in git
+# Processed ML-ready datasets will be generated here by the data pipeline

@@ -1,0 +1,62 @@
+# DotA Coach Configuration
+
+# OpenDota API Configuration
+api:
+  base_url: "https://api.opendota.com/api"
+  rate_limit_per_minute: 60
+  timeout: 30
+
+# Data Configuration
+data:
+  raw_matches_dir: "data/raw/matches"
+  processed_data_dir: "data/processed"
+  constants_snapshots_dir: "constants/snapshots"
+  models_dir: "models"
+  
+# Constants Tracking
+constants:
+  snapshot_frequency: "daily"
+  endpoints:
+    - "heroes"
+    - "items"
+    - "abilities"
+    - "permanent_buffs"
+    - "xp_level"
+    - "skillshots"
+
+# Match Data Collection
+matches:
+  min_mmr: 1000  # Minimum MMR for training data
+  max_matches_per_patch: 10000
+  hero_pool:
+    - "vengeful_spirit"
+    - "witch_doctor"
+    - "lich"
+    - "lion"
+    - "undying"
+    - "shadow_shaman"
+
+# Explorer API Configuration
+explorer:
+  min_rank_tier: 70  # High/Very High skill (roughly 3.7k+ MMR)
+  max_days_old: 60   # Only matches from last 60 days
+  batch_size: 200    # Maximum matches to request in one Explorer query
+
+# ML Model Configuration
+ml:
+  test_size: 0.2
+  random_state: 42
+  cross_validation_folds: 5
+  
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/dota_coach.log"
+  max_file_size: "10MB"
+  backup_count: 5
+
+# CLI Configuration
+cli:
+  default_hero: "vengeful_spirit"
+  output_format: "detailed"  # detailed, summary, json
