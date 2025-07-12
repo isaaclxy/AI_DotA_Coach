@@ -1,0 +1,2 @@
+# This file ensures the models directory is preserved in git
+# Trained ML models (.pkl, .joblib files) will be saved here

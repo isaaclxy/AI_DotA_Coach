@@ -1,0 +1,2 @@
+# This directory contains raw match JSON files from OpenDota API
+# Match files (*.json) are ignored by .gitignore to prevent large data files from being committed

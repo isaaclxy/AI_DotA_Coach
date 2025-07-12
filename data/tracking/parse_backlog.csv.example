@@ -1,0 +1,15 @@
+# Example format for parse_backlog.csv  
+# This file tracks matches waiting to be parsed by OpenDota
+# Copy this file to parse_backlog.csv to initialize the tracking system
+#
+# Columns:
+# - match_id: OpenDota match ID waiting for parsing
+# - source: Either "matches" (competitive) or "public_matches" (public)  
+# - attempts: Number of times we've tried to download this match (max 2)
+# - last_attempt_time: ISO timestamp of most recent download attempt
+# - status: Either "pending" (will retry) or "skipped" (gave up after 2 attempts)
+# - first_queued_time: ISO timestamp when match was first added to backlog
+#
+match_id,source,attempts,last_attempt_time,status,first_queued_time
+7999999998,public_matches,1,2025-07-12T10:25:30.123456+00:00,pending,2025-07-12T10:25:30.123456+00:00
+7999999997,matches,2,2025-07-12T10:28:45.654321+00:00,skipped,2025-07-11T16:22:15.111111+00:00
