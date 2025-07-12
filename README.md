@@ -49,8 +49,8 @@ Also, this is aligned with my personal goal to learn Machine Learning and AI, an
 
 1. **Clone and setup:**
 ```bash
-git clone <repository-url>
-cd DotA_Coach
+git clone https://github.com/isaaclxy/AI_DotA_Coach.git
+cd AI_DotA_Coach
 python -m venv venv
 source venv/bin/activate  # Windows: venv\\Scripts\\activate
 pip install -r requirements.txt
