@@ -18,17 +18,19 @@ from .constants import ConstantsTracker
 class MatchPipeline:
     """Daily match data collection pipeline with state management."""
     
-    def __init__(self, config: Config, daily_api_limit: int = 1800):
+    def __init__(self, config: Config, daily_api_limit: int = 1800, enable_hero_filtering: bool = True):
         """
         Initialize match data pipeline.
         
         Args:
             config (Config): Configuration manager instance.
             daily_api_limit (int): Maximum API calls per run (default 1800).
+            enable_hero_filtering (bool): Enable hero filtering in queries (default True).
         """
         self.config = config
         self.daily_api_limit = daily_api_limit
         self.api_calls_used = 0
+        self.enable_hero_filtering = enable_hero_filtering
         self.logger = logging.getLogger(__name__)
         
         # Initialize paths
@@ -45,9 +47,27 @@ class MatchPipeline:
         self.constants_tracker = ConstantsTracker(config)
         
         # Target heroes (support pool)
-        self.target_hero_ids = [20, 26, 27, 30, 31, 85]  # VS, Lion, Lich, WD, Undying, SS
+        self.target_hero_ids = [20, 26, 27, 28, 30, 31, 85]  # VS, Lion, Lich, SS, WD, Undying
         
         self.logger.info(f"Initialized MatchPipeline with API limit: {daily_api_limit}")
+        self.logger.info(f"Hero filtering enabled: {enable_hero_filtering}")
+    
+    def build_hero_filter_condition(self) -> str:
+        """
+        Generate hero filtering SQL condition using array concatenation.
+        
+        Returns:
+            str: SQL condition for hero filtering, or '1=1' if disabled.
+        """
+        if not self.enable_hero_filtering:
+            return "1=1"  # Always true - no filtering
+        
+        # Use optimal array concatenation && overlap pattern from research
+        hero_array = '[' + ','.join(map(str, self.target_hero_ids)) + ']'
+        condition = f"((radiant_team || dire_team) && ARRAY{hero_array})"
+        
+        self.logger.debug(f"Hero filter condition: {condition}")
+        return condition
     
     def load_state(self) -> bool:
         """
@@ -403,7 +423,10 @@ class MatchPipeline:
             return []
         
         try:
-            # Step 1: Get earliest start_time for deduplication
+            # Step 1: Build hero filtering condition
+            hero_filter_condition = self.build_hero_filter_condition()
+            
+            # Step 2: Get earliest start_time for deduplication
             earliest_query = f"""
             SELECT MIN(start_time)
             FROM {source}
@@ -411,6 +434,7 @@ class MatchPipeline:
             AND avg_rank_tier >= 70
             AND lobby_type = 7
             AND game_mode = 22
+            AND {hero_filter_condition}
             """
             
             earliest_result = self.query_explorer_api(earliest_query)
@@ -433,12 +457,8 @@ class MatchPipeline:
                 self.logger.warning("API limit reached after earliest time query")
                 return []
             
-            # Step 2: Build deduplication list
+            # Step 3: Build deduplication list
             exclude_ids = self.build_deduplication_list(earliest_time)
-            
-            # Step 3: Skip hero filtering for now to test basic pipeline
-            # TODO: Implement hero filtering after verifying basic pipeline works
-            hero_filter = "1=1"  # Always true condition
             
             # Step 4: Build exclusion condition
             if exclude_ids:
@@ -447,12 +467,15 @@ class MatchPipeline:
             else:
                 exclude_condition = ""
             
-            # Step 5: Simplified discovery query to avoid timeouts
-            # Start with basic filtering, will add hero filtering in post-processing
+            # Step 5: Enhanced discovery query with hero filtering
             discovery_query = f"""
             SELECT match_id, start_time
             FROM {source}
             WHERE start_time > {patch_timestamp}
+            AND avg_rank_tier >= 70
+            AND lobby_type = 7
+            AND game_mode = 22
+            AND {hero_filter_condition}
             {exclude_condition}
             ORDER BY start_time DESC
             LIMIT {batch_size}
