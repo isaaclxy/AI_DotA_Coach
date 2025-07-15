@@ -46,11 +46,18 @@ class MatchPipeline:
         # Constants tracker for patch info
         self.constants_tracker = ConstantsTracker(config)
         
+        # Rate limiting
+        self.rate_limit = config.get('api.rate_limit_per_minute', 60)
+        self.last_request_time = 0
+        self.request_count = 0
+        self.request_start_time = time.time()
+        
         # Target heroes (support pool)
         self.target_hero_ids = [20, 26, 27, 28, 30, 31, 85]  # VS, Lion, Lich, SS, WD, Undying
         
         self.logger.info(f"Initialized MatchPipeline with API limit: {daily_api_limit}")
         self.logger.info(f"Hero filtering enabled: {enable_hero_filtering}")
+        self.logger.info(f"Rate limiting enabled: {self.rate_limit} requests per minute")
     
     def build_hero_filter_condition(self) -> str:
         """
@@ -68,6 +75,26 @@ class MatchPipeline:
         
         self.logger.debug(f"Hero filter condition: {condition}")
         return condition
+    
+    def _rate_limit_check(self) -> None:
+        """Implement rate limiting for API requests."""
+        current_time = time.time()
+        
+        # Reset counter if more than a minute has passed
+        if current_time - self.request_start_time > 60:
+            self.request_count = 0
+            self.request_start_time = current_time
+        
+        # Check if we're at the rate limit
+        if self.request_count >= self.rate_limit:
+            sleep_time = 60 - (current_time - self.request_start_time)
+            if sleep_time > 0:
+                self.logger.info(f"Rate limit reached, sleeping for {sleep_time:.1f} seconds")
+                time.sleep(sleep_time)
+                self.request_count = 0
+                self.request_start_time = time.time()
+        
+        self.request_count += 1
     
     def load_state(self) -> bool:
         """
@@ -170,6 +197,7 @@ class MatchPipeline:
         
         try:
             self.logger.info(f"Fetching match {match_id} from OpenDota API...")
+            self._rate_limit_check()
             response = requests.get(api_url, timeout=30)
             response.raise_for_status()
             
@@ -252,6 +280,7 @@ class MatchPipeline:
         """
         try:
             api_url = f"{self.config.api_base_url}/request/{match_id}"
+            self._rate_limit_check()
             response = requests.post(api_url, timeout=30)
             
             # Track API call
@@ -363,6 +392,7 @@ class MatchPipeline:
             params = {'sql': sql_query.strip()}
             
             self.logger.debug(f"Explorer query: {sql_query.strip()}")
+            self._rate_limit_check()
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
             
