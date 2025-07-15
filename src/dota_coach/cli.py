@@ -10,7 +10,6 @@ from typing import Dict, List, Any, Optional
 
 from .config import Config
 from .constants import ConstantsTracker
-from .data_loader import DataLoader
 from .data_flattener import DataFlattener
 from .hero_mapping import HeroMapper
 
@@ -22,7 +21,6 @@ class DotACoachCLI:
         """Initialize CLI with configuration and modules."""
         self.config = Config()
         self.constants_tracker = ConstantsTracker(self.config)
-        self.data_loader = DataLoader(self.config)
         self.data_flattener = DataFlattener(self.config)
         self.hero_mapper = HeroMapper()
         
@@ -206,23 +204,6 @@ def update_constants(ctx):
 @main.command()
 @click.option('--patch-id', '-p',
               prompt='Patch ID',
-              help='Patch ID to collect matches for')
-@click.option('--max-matches', '-m',
-              default=100,
-              help='Maximum number of matches to collect')
-@click.pass_context
-def collect_matches(ctx, patch_id: str, max_matches: int):
-    """Collect match data for a specific patch."""
-    cli = ctx.obj['cli']
-    
-    click.echo(f"Collecting up to {max_matches} matches for patch {patch_id}...")
-    collected = cli.data_loader.collect_matches_for_patch(patch_id, max_matches)
-    click.echo(f"Successfully collected {collected} matches")
-
-
-@main.command()
-@click.option('--patch-id', '-p',
-              prompt='Patch ID',
               help='Patch ID to process data for')
 @click.pass_context
 def process_data(ctx, patch_id: str):
@@ -269,65 +250,6 @@ def status(ctx):
     click.echo(f"Trained models: {models_count}")
     
     click.echo("\n" + "="*50)
-
-
-@main.command()
-@click.option('--patch', '-p',
-              help='Patch ID to fetch matches for (if not provided, uses current patch)')
-@click.option('--heroes', '-h',
-              help='Comma-separated hero names or IDs (e.g., "vengeful_spirit,lich" or "20,31")')
-@click.option('--limit', '-l',
-              default=100,
-              help='Maximum number of matches to fetch')
-@click.pass_context
-def fetch_matches(ctx, patch: str, heroes: str, limit: int):
-    """Fetch matches using Explorer API with precise filtering."""
-    cli = ctx.obj['cli']
-    
-    try:
-        # Update constants first to get latest patch
-        click.echo("Updating constants...")
-        constants_result = cli.constants_tracker.update_constants()
-        click.echo(f"Constants: {constants_result}")
-        
-        # Determine patch ID
-        if patch:
-            patch_id = patch
-            click.echo(f"Using specified patch: {patch_id}")
-        else:
-            patch_id = cli.constants_tracker.get_current_patch_id()
-            if not patch_id:
-                click.echo("❌ No patch ID found. Please specify --patch or update constants first.")
-                return
-            click.echo(f"Using current patch: {patch_id}")
-        
-        # Parse heroes
-        if heroes:
-            hero_ids = cli.hero_mapper.parse_hero_input(heroes)
-            if not hero_ids:
-                click.echo("❌ No valid heroes found. Please check hero names/IDs.")
-                return
-            
-            hero_names = cli.hero_mapper.ids_to_names(hero_ids)
-            click.echo(f"Heroes: {', '.join(hero_names)} (IDs: {hero_ids})")
-        else:
-            # Use default hero pool
-            hero_ids = cli.hero_mapper.get_all_hero_ids()
-            click.echo(f"Using all heroes in pool: {len(hero_ids)} heroes")
-        
-        # Fetch matches
-        click.echo(f"\n🔍 Fetching up to {limit} matches for patch {patch_id}...")
-        
-        collected = cli.data_loader.fetch_matches_via_explorer(patch_id, hero_ids, limit)
-        
-        if collected > 0:
-            click.echo(f"✅ Successfully fetched {collected} matches!")
-            click.echo(f"📁 Saved to: data/raw/matches/patch_{patch_id}/")
-        else:
-            click.echo("❌ No matches were collected.")
-            
-    except Exception as e:
-        click.echo(f"❌ Error: {e}")
 
 
 @main.command()
