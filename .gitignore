@@ -173,5 +173,8 @@ models/*.joblib
 data/tracking/downloaded_matches.csv
 data/tracking/parse_backlog.csv
 
+# External drive configuration (keep example, exclude user's actual config)
+data/.data_location
+
 # Logs
 logs/
