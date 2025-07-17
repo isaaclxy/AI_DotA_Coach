@@ -694,4 +694,14 @@ class MatchPipeline:
         self.logger.info(f"Processed {summary['total_matches_processed']} matches total")
         self.logger.info(f"API calls used: {self.api_calls_used}/{self.daily_api_limit}")
         
+        # Update topline data CSV after successful pipeline run
+        if summary['success'] and summary['total_matches_processed'] > 0:
+            try:
+                self.logger.info("Updating topline data CSV...")
+                from .extract_match_data import extract_match_topline_data
+                topline_stats = extract_match_topline_data(self.config)
+                self.logger.info(f"Topline data updated: {topline_stats['total_players']} player records")
+            except Exception as e:
+                self.logger.warning(f"Failed to update topline data: {e}")
+        
         return summary

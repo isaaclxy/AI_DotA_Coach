@@ -172,6 +172,7 @@ models/*.joblib
 # Tracking state files (exclude actual data, keep examples)
 data/tracking/downloaded_matches.csv
 data/tracking/parse_backlog.csv
+data/tracking/match_topline_data.csv
 
 # External drive configuration (keep example, exclude user's actual config)
 data/.data_location
