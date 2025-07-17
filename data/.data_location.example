@@ -1,0 +1,31 @@
+# External Data Directory Configuration
+# 
+# This file allows you to store your DotA Coach data on an external drive
+# to save space on your main drive.
+#
+# INSTRUCTIONS:
+# 1. Create the directory structure on your external drive first
+# 2. Copy your existing data/ folder contents to the external location
+# 3. Save this file as ".data_location" (without .example)
+#
+# EXAMPLES:
+#
+# For Mac users:
+# /Volumes/YourDriveName/.../AI_DotA_Coach/data
+#
+# For Windows users:
+# D:\...\AI_DotA_Coach\data
+#
+# IMPORTANT NOTES:
+# - Use absolute paths only (full path starting from root)
+# - Make sure the full directory (incl sub-directories following the codebase) exists before running the program
+# - If any expected subdirectory is missing, it will return an error
+# - On Windows, if your drive letter changes (D: becomes E:), the program will try to find it
+#
+# SETUP STEPS:
+# 1. Create this directory structure on your external drive:
+#    YourDriveName/.../AI_DotA_Coach/data/
+# 2. Copy existing data from your codebase to this location
+# 3. Enter your path below
+
+# ENTER YOUR PATH BELOW THIS LINE:

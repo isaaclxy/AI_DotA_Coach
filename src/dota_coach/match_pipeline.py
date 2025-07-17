@@ -33,11 +33,10 @@ class MatchPipeline:
         self.enable_hero_filtering = enable_hero_filtering
         self.logger = logging.getLogger(__name__)
         
-        # Initialize paths
-        self.project_root = Path(__file__).parent.parent.parent
-        self.tracking_dir = self.project_root / "data" / "tracking"
-        self.matches_dir = self.project_root / "data" / "raw" / "matches"
-        self.public_matches_dir = self.project_root / "data" / "raw" / "public_matches"
+        # Initialize paths from config (supports external drive)
+        self.tracking_dir = Path(config.data_dirs['tracking'])
+        self.matches_dir = Path(config.data_dirs['raw_matches'])
+        self.public_matches_dir = Path(config.data_dirs['raw_matches']).parent / "public_matches"
         
         # State tracking
         self.downloaded_matches = []  # List of dicts from CSV
