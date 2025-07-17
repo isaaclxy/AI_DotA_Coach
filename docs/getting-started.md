@@ -133,15 +133,15 @@ python -m src.dota_coach.cli coach --hero witch_doctor --lane safe --opponents p
 
 ### State Management
 The system uses CSV files to track data collection progress:
-- **`data/state/downloaded_matches.csv`**: Tracks successfully downloaded matches
-- **`data/state/parse_backlog.csv`**: Manages matches requiring parse requests
+- **`data/tracking/downloaded_matches.csv`**: Tracks successfully downloaded matches
+- **`data/tracking/parse_backlog.csv`**: Manages matches requiring parse requests
 
 ### Data Organization
 ```
 data/
 ├── raw/matches/              # Raw match JSON files
 │   └── 8370907704.json      # Individual match files
-├── state/                   # Pipeline state tracking
+├── tracking/                # Pipeline state tracking
 │   ├── downloaded_matches.csv
 │   └── parse_backlog.csv
 └── processed/               # ML-ready datasets (future)
@@ -152,6 +152,69 @@ data/
 2. **Download**: Fetch individual match details
 3. **Parse Requests**: Queue unparsed matches for processing
 4. **State Tracking**: Maintain CSV records for deduplication
+
+## Data Analysis Workflow
+
+### Overview
+The data analysis workflow transforms raw match data into ML-ready insights through a structured pipeline:
+
+**Collection → Extraction → Analysis → Training**
+
+### Step 1: Match Data Collection
+```bash
+# Collect targeted support hero matches
+python -m src.dota_coach.cli fetch-matches-daily --api-limit 1800 --batch-size 50
+```
+
+**Features**:
+- Targets 7 support heroes for MVP training
+- 5x efficiency improvement with hero filtering
+- CSV state management across runs
+- Automatic parse request workflow
+
+### Step 2: Data Extraction
+```bash
+# Extract match data to CSV with rank cleaning
+python -m src.dota_coach.cli extract-topline
+```
+
+**Features**:
+- Processes all raw match JSON files
+- Comprehensive rank tier cleaning
+- Data validation and consistency checks
+- Structured CSV output for analysis
+
+### Step 3: ML Readiness Assessment
+```bash
+# Generate data analysis dashboard
+python -m src.dota_coach.cli dashboard
+```
+
+**Features**:
+- Per-hero ML readiness assessment
+- Unique player and game volume metrics
+- Training data quality analysis
+- Actionable recommendations for ML development
+
+**Dashboard Sections**:
+- **Data Overview**: Total matches, heroes, players analyzed
+- **Per-Hero Assessment**: Unique players, total games, training readiness
+- **Recommendations**: Next steps for ML model development
+
+### External Drive Configuration for Analysis
+For large-scale analysis, configure external drive storage:
+
+```bash
+# 1. Copy example configuration
+cp data/.data_location.example data/.data_location
+
+# 2. Edit with your external drive path
+# Example: /Volumes/ExternalDrive/DotA_Coach_Data
+
+# 3. All analysis commands automatically use external storage
+python -m src.dota_coach.cli extract-topline
+python -m src.dota_coach.cli dashboard
+```
 
 ## Configuration Details
 
