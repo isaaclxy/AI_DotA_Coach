@@ -15,16 +15,18 @@ from .hero_mapping import HeroMapper
 class DashboardGenerator:
     """Generates ML training readiness dashboard from topline data."""
     
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, filter_latest_patch_only: bool = False):
         """
         Initialize dashboard generator.
         
         Args:
             config (Config): Configuration manager instance.
+            filter_latest_patch_only (bool): If True, only analyze latest patch data.
         """
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.hero_mapper = HeroMapper()
+        self.filter_latest_patch_only = filter_latest_patch_only
         
         # Set up paths
         self.csv_path = Path(config.data_dirs['tracking']) / "match_topline_data.csv"
@@ -50,8 +52,25 @@ class DashboardGenerator:
         """
         self.logger.info("Generating ML training dashboard...")
         
+        # If instance is configured for latest patch only, generate single dashboard
+        if self.filter_latest_patch_only:
+            return self._generate_single_dashboard(latest_patch_only=True)
+        
+        # Otherwise, generate comprehensive dashboard with both all data and latest patch
+        return self._generate_comprehensive_dashboard()
+    
+    def _generate_single_dashboard(self, latest_patch_only: bool = False) -> Dict[str, Any]:
+        """
+        Generate single dashboard (either all data or latest patch only).
+        
+        Args:
+            latest_patch_only (bool): If True, filter to latest patch only.
+            
+        Returns:
+            Dict[str, Any]: Dashboard data and statistics.
+        """
         # Load data
-        df = self._load_data()
+        df = self._load_data(latest_patch_only=latest_patch_only)
         if df is None:
             return {'error': 'Failed to load topline data'}
         
@@ -61,7 +80,8 @@ class DashboardGenerator:
             'hero_coverage': self._generate_hero_coverage(df),
             'hero_matchups': self._generate_hero_matchups(df),
             'per_hero_assessment': self._generate_per_hero_assessment(df),
-            'recommendations': self._generate_recommendations(df)
+            'recommendations': self._generate_recommendations(df),
+            'latest_patch_only': latest_patch_only
         }
         
         # Display dashboard
@@ -69,9 +89,93 @@ class DashboardGenerator:
         
         return dashboard_data
     
-    def _load_data(self) -> Optional[pd.DataFrame]:
+    def _generate_comprehensive_dashboard(self) -> Dict[str, Any]:
         """
-        Load topline data from CSV file.
+        Generate comprehensive dashboard with both all data and latest patch analysis.
+        
+        Returns:
+            Dict[str, Any]: Dashboard data and statistics.
+        """
+        # Load all data first to get patch information
+        df_all = self._load_data(latest_patch_only=False)
+        if df_all is None:
+            return {'error': 'Failed to load topline data'}
+        
+        # Check if we have multiple patches
+        patch_distribution = self._get_patch_distribution(df_all)
+        if len(patch_distribution) == 1:
+            # Only one patch, no need for separation
+            return self._generate_single_dashboard(latest_patch_only=False)
+        
+        # Generate all data analysis
+        all_data_analysis = {
+            'data_overview': self._generate_data_overview(df_all),
+            'hero_coverage': self._generate_hero_coverage(df_all),
+            'hero_matchups': self._generate_hero_matchups(df_all),
+            'per_hero_assessment': self._generate_per_hero_assessment(df_all),
+            'recommendations': self._generate_recommendations(df_all)
+        }
+        
+        # Load latest patch data
+        df_latest = self._load_data(latest_patch_only=True)
+        if df_latest is None or len(df_latest) == 0:
+            # No latest patch data, return all data only
+            dashboard_data = {
+                'all_data': all_data_analysis,
+                'latest_patch': None,
+                'mode': 'all_data_only'
+            }
+        else:
+            # Generate latest patch analysis
+            latest_patch_analysis = {
+                'data_overview': self._generate_data_overview(df_latest),
+                'hero_coverage': self._generate_hero_coverage(df_latest),
+                'hero_matchups': self._generate_hero_matchups(df_latest),
+                'per_hero_assessment': self._generate_per_hero_assessment(df_latest),
+                'recommendations': self._generate_recommendations(df_latest)
+            }
+            
+            dashboard_data = {
+                'all_data': all_data_analysis,
+                'latest_patch': latest_patch_analysis,
+                'mode': 'comprehensive'
+            }
+        
+        # Display comprehensive dashboard
+        self._display_comprehensive_dashboard(dashboard_data)
+        
+        return dashboard_data
+    
+    def _detect_latest_patch(self, df: pd.DataFrame) -> int:
+        """
+        Detect the latest patch number in the dataset.
+        
+        Args:
+            df (pd.DataFrame): The loaded data.
+            
+        Returns:
+            int: Latest patch number.
+        """
+        return df['patch'].max()
+    
+    def _get_patch_distribution(self, df: pd.DataFrame) -> Dict[int, int]:
+        """
+        Get patch distribution in the dataset.
+        
+        Args:
+            df (pd.DataFrame): The loaded data.
+            
+        Returns:
+            Dict[int, int]: Patch number to match count mapping.
+        """
+        return df.groupby('patch')['match_id'].nunique().to_dict()
+    
+    def _load_data(self, latest_patch_only: bool = None) -> Optional[pd.DataFrame]:
+        """
+        Load topline data from CSV file with optional patch filtering.
+        
+        Args:
+            latest_patch_only (bool, optional): Override instance setting for patch filtering.
         
         Returns:
             Optional[pd.DataFrame]: Loaded data or None if error.
@@ -96,6 +200,13 @@ class DashboardGenerator:
                     self.logger.error(f"Missing required column: {col}")
                     return None
             
+            # Apply patch filtering if requested
+            filter_patch = latest_patch_only if latest_patch_only is not None else self.filter_latest_patch_only
+            if filter_patch:
+                latest_patch = self._detect_latest_patch(df)
+                df = df[df['patch'] == latest_patch]
+                self.logger.info(f"Filtered to latest patch {latest_patch}: {len(df)} players")
+            
             return df
             
         except Exception as e:
@@ -114,12 +225,18 @@ class DashboardGenerator:
         # Source breakdown
         source_counts = df['source'].value_counts().to_dict()
         
+        # Patch distribution
+        patch_distribution = self._get_patch_distribution(df)
+        latest_patch = self._detect_latest_patch(df) if len(df) > 0 else None
+        
         return {
             'total_matches': total_matches,
             'total_players': total_players,
             'original_rank_count': original_rank_count,
             'cleaned_rank_count': cleaned_rank_count,
-            'source_breakdown': source_counts
+            'source_breakdown': source_counts,
+            'patch_distribution': patch_distribution,
+            'latest_patch': latest_patch
         }
     
     def _generate_hero_coverage(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -354,8 +471,10 @@ class DashboardGenerator:
     
     def _display_dashboard(self, data: Dict[str, Any]) -> None:
         """Display formatted dashboard to console."""
+        patch_filter_text = " (LATEST PATCH ONLY)" if data.get('latest_patch_only', False) else ""
+        
         print("\n" + "="*60)
-        print("📊 AI DOTA COACH DATA DASHBOARD")
+        print(f"📊 AI DOTA COACH DATA DASHBOARD{patch_filter_text}")
         print("="*60)
         
         # Data Overview
@@ -364,6 +483,15 @@ class DashboardGenerator:
         print(f"  Total Matches: {overview['total_matches']}")
         print(f"  Total Players: {overview['total_players']}")
         print(f"  Data Sources: {dict(overview['source_breakdown'])}")
+        
+        # Patch information
+        if 'patch_distribution' in overview and overview['patch_distribution']:
+            patch_dist = overview['patch_distribution']
+            latest_patch = overview.get('latest_patch')
+            print(f"  Patch Distribution: {dict(patch_dist)}")
+            if latest_patch:
+                print(f"  Latest Patch: {latest_patch}")
+        
         print(f"  Players with Original Rank: {overview['original_rank_count']} ({overview['original_rank_count']/overview['total_players']*100:.1f}%)")
         print(f"  Players with Cleaned Rank: {overview['cleaned_rank_count']} ({overview['cleaned_rank_count']/overview['total_players']*100:.1f}%)")
         
@@ -393,14 +521,92 @@ class DashboardGenerator:
             print(f"- COLLECT MORE: {', '.join(recommendations['collect_more'])}")
         
         print("\n" + "="*60)
+    
+    def _display_comprehensive_dashboard(self, data: Dict[str, Any]) -> None:
+        """Display comprehensive dashboard with both all data and latest patch analysis."""
+        print("\n" + "="*80)
+        print("📊 AI DOTA COACH COMPREHENSIVE DATA DASHBOARD")
+        print("="*80)
+        
+        if data['mode'] == 'all_data_only':
+            print("\n⚠️ Only one patch detected - showing all data analysis")
+            self._display_single_section("📊 ALL DATA ANALYSIS", data['all_data'])
+        else:
+            # Display all data section
+            print("\n" + "="*80)
+            print("📊 ALL DATA ANALYSIS")
+            print("="*80)
+            self._display_section_content(data['all_data'])
+            
+            # Display latest patch section
+            if data['latest_patch']:
+                latest_patch_num = data['latest_patch']['data_overview']['latest_patch']
+                print("\n" + "="*80)
+                print(f"🚀 LATEST PATCH ({latest_patch_num}) ANALYSIS")
+                print("="*80)
+                self._display_section_content(data['latest_patch'])
+    
+    def _display_single_section(self, title: str, section_data: Dict[str, Any]) -> None:
+        """Display a single section with title."""
+        print(f"\n{title}")
+        print("="*len(title))
+        self._display_section_content(section_data)
+    
+    def _display_section_content(self, data: Dict[str, Any]) -> None:
+        """Display the content of a dashboard section."""
+        # Data Overview
+        overview = data['data_overview']
+        print(f"\n📈 Data Collection Summary:")
+        print(f"  Total Matches: {overview['total_matches']}")
+        print(f"  Total Players: {overview['total_players']}")
+        print(f"  Data Sources: {dict(overview['source_breakdown'])}")
+        
+        # Patch information
+        if 'patch_distribution' in overview and overview['patch_distribution']:
+            patch_dist = overview['patch_distribution']
+            latest_patch = overview.get('latest_patch')
+            print(f"  Patch Distribution: {dict(patch_dist)}")
+            if latest_patch:
+                print(f"  Latest Patch: {latest_patch}")
+        
+        print(f"  Players with Original Rank: {overview['original_rank_count']} ({overview['original_rank_count']/overview['total_players']*100:.1f}%)")
+        print(f"  Players with Cleaned Rank: {overview['cleaned_rank_count']} ({overview['cleaned_rank_count']/overview['total_players']*100:.1f}%)")
+        
+        # Per-Hero Assessment
+        print(f"\n✅ ML Training Readiness (Per Hero):")
+        print("")
+        assessments = data['per_hero_assessment']
+        for hero_id in self.target_hero_ids:
+            assessment = assessments[hero_id]
+            print(f"{assessment['name'].upper()} (ID: {hero_id})")
+            print(f"  Data Volume: {assessment['data_volume']['status']} {assessment['unique_players']} unique players across {assessment['total_games']} games ({assessment['data_volume']['rating']})")
+            print(f"  Skill Quality: {assessment['skill_quality']['status']} {assessment['skill_quality']['high_skill_pct']:.1f}% high-skill Ancient+ ({assessment['skill_quality']['rating']})")
+            print(f"  Matchup Diversity: {assessment['matchup_diversity']['status']} {assessment['matchup_diversity']['unique_opponents']} unique opponent heroes ({assessment['matchup_diversity']['rating']})")
+            print("")
+        
+        # Recommendations
+        recommendations = data['recommendations']
+        print(f"📋 RECOMMENDATION: {recommendations['overall_recommendation']}")
+        
+        if recommendations['ready_heroes']:
+            print(f"- READY NOW: {', '.join(recommendations['ready_heroes'])}")
+        
+        if recommendations['needs_more_data']:
+            print(f"- NEEDS MORE DATA: {', '.join(recommendations['needs_more_data'])}")
+        
+        if recommendations['collect_more']:
+            print(f"- COLLECT MORE: {', '.join(recommendations['collect_more'])}")
+        
+        print("\n" + "="*40)
 
 
-def generate_dashboard(config: Config = None) -> Dict[str, Any]:
+def generate_dashboard(config: Config = None, latest_patch_only: bool = False) -> Dict[str, Any]:
     """
     Generate ML training dashboard from topline data.
     
     Args:
         config (Config, optional): Configuration instance.
+        latest_patch_only (bool): If True, only analyze latest patch data.
         
     Returns:
         Dict[str, Any]: Dashboard data.
@@ -408,7 +614,7 @@ def generate_dashboard(config: Config = None) -> Dict[str, Any]:
     if config is None:
         config = Config()
     
-    generator = DashboardGenerator(config)
+    generator = DashboardGenerator(config, filter_latest_patch_only=latest_patch_only)
     return generator.generate_dashboard()
 
 

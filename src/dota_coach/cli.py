@@ -357,8 +357,9 @@ def extract_topline(ctx):
 
 
 @main.command()
+@click.option('--latest-patch', is_flag=True, help='Only analyze latest patch data')
 @click.pass_context
-def dashboard(ctx):
+def dashboard(ctx, latest_patch):
     """Generate ML training readiness dashboard."""
     cli = ctx.obj['cli']
     
@@ -367,13 +368,14 @@ def dashboard(ctx):
         from .generate_dashboard import generate_dashboard
         
         # Generate dashboard
-        dashboard_data = generate_dashboard(cli.config)
+        dashboard_data = generate_dashboard(cli.config, latest_patch_only=latest_patch)
         
         if 'error' in dashboard_data:
             click.echo(f"❌ Dashboard error: {dashboard_data['error']}")
         else:
             # Dashboard is displayed within the generate_dashboard function
-            click.echo("📊 Dashboard generated successfully!")
+            mode_text = "latest patch only" if latest_patch else "comprehensive"
+            click.echo(f"📊 Dashboard generated successfully! ({mode_text})")
             
     except Exception as e:
         click.echo(f"❌ Dashboard error: {e}")

@@ -166,7 +166,8 @@ class MatchDataExtractor:
         for player in players:
             if not isinstance(player, dict):
                 return False
-            if 'hero_id' not in player or 'account_id' not in player:
+            # Allow null account_id for anonymous players
+            if 'hero_id' not in player:
                 return False
         
         return True

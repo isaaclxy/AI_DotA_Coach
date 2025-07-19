@@ -120,21 +120,32 @@ python -m src.dota_coach.cli extract-topline
 **Purpose**: Generate ML training readiness dashboard.
 
 ```bash
-python -m src.dota_coach.cli dashboard
+python -m src.dota_coach.cli dashboard [OPTIONS]
 ```
+
+**Options**:
+- `--latest-patch`: Only analyze latest patch data (default: analyze all data with patch comparison)
+- `--help`: Show command help
 
 **Features**:
 - Per-hero ML readiness assessment
 - Unique player and game volume metrics
 - Training data quality analysis
+- Patch-based filtering and comparison
 - Actionable recommendations for ML development
-- Three-section output: overview, assessment, recommendations
+- Two display modes: comprehensive (all data + latest patch) or latest patch only
 
-**Output**: Comprehensive dashboard showing ML training readiness by hero.
+**Output**: 
+- **Default**: Comprehensive dashboard with both all data and latest patch analysis
+- **With --latest-patch**: Focused dashboard showing only current patch data
 
-**Example**:
+**Examples**:
 ```bash
+# Comprehensive dashboard (recommended for overview)
 python -m src.dota_coach.cli dashboard
+
+# Latest patch only (recommended for ML training focus)
+python -m src.dota_coach.cli dashboard --latest-patch
 ```
 
 ---
@@ -212,8 +223,11 @@ python -m src.dota_coach.cli extract-topline
 
 ### 3. Analysis Phase
 ```bash
-# Generate dashboard
+# Generate comprehensive dashboard
 python -m src.dota_coach.cli dashboard
+
+# Or focus on latest patch for ML training
+python -m src.dota_coach.cli dashboard --latest-patch
 ```
 
 ### 4. Training Phase
