@@ -34,7 +34,8 @@ src/dota_coach/
 ├── config.py               # Configuration management and validation
 ├── constants.py            # OpenDota constants tracking with metadata
 ├── match_pipeline.py       # Daily match collection with state management
-├── data_loader.py          # Basic match data fetching utilities
+├── extract_match_data.py   # CSV extraction with rank cleaning
+├── generate_dashboard.py   # Dashboard with ML readiness assessment
 ├── data_flattener.py       # JSON to ML-ready format conversion (future)
 ├── explorer_query.py       # OpenDota Explorer API query utilities
 ├── hero_mapping.py         # Hero ID and name mapping utilities
@@ -51,7 +52,9 @@ src/dota_coach/
   - `status` - System status and data availability
   - `update-constants` - Fetch latest game constants
   - `fetch-matches-daily` - Run daily match collection pipeline
-  - `collect-matches` - Basic match collection utilities
+  - `extract-topline` - Extract match data to CSV with rank cleaning
+  - `dashboard` - Generate ML training readiness dashboard
+  - `process-data` - Process raw match data for ML training
 - **Design**: Uses Click framework for robust command parsing and help
 
 #### `match_pipeline.py` - Data Collection Engine
@@ -60,8 +63,27 @@ src/dota_coach/
   - CSV state management for deduplication across runs
   - Parse request workflow with retry logic
   - API budget tracking and enforcement
+  - Hero filtering with 5x efficiency improvement
   - 4-step process: load state → process backlog → discover → save state
-- **Current Status**: Operational but blocked on hero filtering optimization
+- **Current Status**: Operational with resolved hero filtering
+
+#### `extract_match_data.py` - CSV Data Extraction
+- **Purpose**: Process raw match JSON files into structured CSV format
+- **Features**:
+  - Comprehensive rank tier cleaning and validation
+  - Data consistency checks and error handling
+  - Structured output for analysis and ML training
+  - Progress tracking during extraction
+- **Current Status**: Operational, integrated with CLI
+
+#### `generate_dashboard.py` - ML Readiness Assessment
+- **Purpose**: Generate comprehensive data analysis dashboard
+- **Features**:
+  - Per-hero ML training readiness assessment
+  - Unique player and game volume metrics
+  - Training data quality analysis
+  - Three-section output: overview, assessment, recommendations
+- **Current Status**: Operational, provides ML training insights
 
 #### `constants.py` - Game Constants Tracking
 - **Purpose**: Enhanced patch tracking with comprehensive metadata
@@ -85,7 +107,7 @@ data/
 │   ├── matches/           # Individual match JSON files
 │   │   └── 8370907704.json # Example: parsed match data (~15KB each)
 │   └── public_matches/    # Basic match info from public_matches table
-├── state/                 # Pipeline state management
+├── tracking/              # Pipeline state management
 │   ├── downloaded_matches.csv     # Tracks successfully downloaded matches
 │   ├── downloaded_matches.csv.example # Template with headers
 │   ├── parse_backlog.csv         # Manages matches requiring parse requests
@@ -94,7 +116,6 @@ data/
 │   ├── flattened/        # Structured data from raw JSON
 │   ├── features/         # Engineered features for ML training
 │   └── splits/           # Train/validation/test datasets
-└── tracking/             # Legacy state files (being phased out)
 ```
 
 ### State Management Design

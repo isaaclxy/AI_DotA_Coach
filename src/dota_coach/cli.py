@@ -328,5 +328,58 @@ def fetch_matches_daily(ctx, api_limit: int, batch_size: int, dry_run: bool):
         click.echo(f"❌ Pipeline error: {e}")
 
 
+@main.command()
+@click.pass_context
+def extract_topline(ctx):
+    """Extract topline data from all match files to CSV."""
+    cli = ctx.obj['cli']
+    
+    click.echo("🔄 Extracting match topline data...")
+    
+    try:
+        # Import here to avoid circular imports
+        from .extract_match_data import extract_match_topline_data
+        
+        # Run extraction
+        stats = extract_match_topline_data(cli.config)
+        
+        click.echo(f"✅ Extraction complete!")
+        click.echo(f"📊 Statistics:")
+        click.echo(f"   - Total files processed: {stats['total_files']}")
+        click.echo(f"   - Valid matches: {stats['valid_matches']}")
+        click.echo(f"   - Invalid matches: {stats['invalid_matches']}")
+        click.echo(f"   - Total player records: {stats['total_players']}")
+        click.echo(f"   - Original rank data: {stats['players_with_original_rank']}")
+        click.echo(f"   - Cleaned rank data: {stats['players_with_cleaned_rank']}")
+        
+    except Exception as e:
+        click.echo(f"❌ Extraction error: {e}")
+
+
+@main.command()
+@click.option('--latest-patch', is_flag=True, help='Only analyze latest patch data')
+@click.pass_context
+def dashboard(ctx, latest_patch):
+    """Generate ML training readiness dashboard."""
+    cli = ctx.obj['cli']
+    
+    try:
+        # Import here to avoid circular imports
+        from .generate_dashboard import generate_dashboard
+        
+        # Generate dashboard
+        dashboard_data = generate_dashboard(cli.config, latest_patch_only=latest_patch)
+        
+        if 'error' in dashboard_data:
+            click.echo(f"❌ Dashboard error: {dashboard_data['error']}")
+        else:
+            # Dashboard is displayed within the generate_dashboard function
+            mode_text = "latest patch only" if latest_patch else "comprehensive"
+            click.echo(f"📊 Dashboard generated successfully! ({mode_text})")
+            
+    except Exception as e:
+        click.echo(f"❌ Dashboard error: {e}")
+
+
 if __name__ == '__main__':
     main()

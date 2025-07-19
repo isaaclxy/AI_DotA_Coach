@@ -35,9 +35,10 @@ Also, this is aligned with my personal goal to learn Machine Learning and AI, an
 **Phase 1: ML Model Foundation** (In Progress)
 - ✅ **Operational Data Pipeline**: Match collection with state management and parse requests
 - ✅ **Constants System**: Enhanced patch tracking with metadata and comprehensive logging  
-- ✅ **CLI Framework**: Coaching interface with data collection and system management
-- 🔴 **Current Blocker**: Hero filtering optimization (query timeouts prevent targeted data collection)
-- ⏳ **Next Steps**: Data flattening, ML model training, enhanced coaching recommendations
+- ✅ **Hero Filtering**: Operational targeting of 7 support heroes with 5x efficiency improvement
+- ✅ **Data Analysis Dashboard**: CSV extraction and per-hero ML readiness assessment
+- ✅ **CLI Framework**: Coaching interface with data collection and analysis tools
+- ⏳ **Next Steps**: ML model training using dashboard insights, enhanced coaching recommendations
 
 ## ⚡ Quick Start
 
@@ -78,6 +79,12 @@ python -m src.dota_coach.cli update-constants
 
 # Run daily match data collection
 python -m src.dota_coach.cli fetch-matches-daily --api-limit 1800 --batch-size 50
+
+# Extract match data to CSV with rank cleaning
+python -m src.dota_coach.cli extract-topline
+
+# Generate data analysis dashboard
+python -m src.dota_coach.cli dashboard
 ```
 
 ## 🏗️ System Architecture
@@ -108,6 +115,8 @@ DotA_Coach/
 ├── src/dota_coach/           # Core application
 │   ├── match_pipeline.py     # Daily match collection with state management
 │   ├── constants.py          # Enhanced patch tracking system
+│   ├── extract_match_data.py # CSV extraction with rank cleaning
+│   ├── generate_dashboard.py # Dashboard with ML readiness assessment
 │   ├── cli.py               # Command-line interface
 │   └── config.py            # Configuration management
 ├── data/                    # Data storage
@@ -143,10 +152,10 @@ MODELS_DIR=models
 ## 🚀 Development Roadmap
 
 ### **Current Focus: Phase 1 - ML Model Foundation**
-- 🔴 **Hero Filtering Optimization** (Critical Blocker)
-- **Data Processing Pipeline** - Convert raw JSON to ML-ready datasets
-- **Initial ML Model Training** - Item/skill/positioning recommendations  
+- **ML Model Training** - Use dashboard insights to guide model development
 - **Enhanced CLI Coach** - Replace placeholders with ML-powered advice
+- **Data Processing Pipeline** - Optimize CSV extraction for ML training
+- **Model Validation** - Test recommendations against high-MMR player decisions
 
 ### **Upcoming Phases**
 - **Phase 2**: Real-time GameState API integration
