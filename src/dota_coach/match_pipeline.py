@@ -672,6 +672,34 @@ class MatchPipeline:
                 'api_calls_used': self.api_calls_used
             }
         
+        # Step 0.5: Check and update constants if needed
+        constants_result = None
+        patch_info = None
+        if not self.is_api_limit_reached():
+            self.logger.info("Checking constants for updates...")
+            try:
+                # Get current patch info for logging
+                patch_info = self.constants_tracker.get_current_patch_info(self._rate_limit_check)
+                self.logger.info(f"Current patch: {patch_info['patch_name']} (ID: {patch_info['patch_numeric_id']}, Date: {patch_info['patch_date']})")
+                
+                # Update constants and count API calls
+                constants_result = self.constants_tracker.update_constants(self._rate_limit_check)
+                
+                # Count the API calls made by constants tracker
+                # Constants tracker makes 1 call for patch info + 1 call per endpoint (6 configured)
+                constants_api_calls = 1 + len(self.config.constants_endpoints)
+                self.api_calls_used += constants_api_calls
+                
+                self.logger.info(f"Constants check result: {constants_result}")
+                self.logger.info(f"Used {constants_api_calls} API calls for constants checking")
+                
+            except Exception as e:
+                self.logger.error(f"Failed to check constants: {e}")
+                constants_result = f"Error: {e}"
+        else:
+            self.logger.warning("Skipping constants check - API limit reached")
+            constants_result = "Skipped - API limit reached"
+        
         # Step 1: Process backlog
         backlog_processed = self.process_backlog()
         
@@ -697,12 +725,19 @@ class MatchPipeline:
             'api_calls_used': self.api_calls_used,
             'api_limit': self.daily_api_limit,
             'remaining_backlog': len(self.parse_backlog),
-            'total_downloaded': len(self.downloaded_matches)
+            'total_downloaded': len(self.downloaded_matches),
+            'constants_check_result': constants_result,
+            'current_patch': patch_info['patch_name'] if patch_info else 'unknown',
+            'patch_numeric_id': patch_info['patch_numeric_id'] if patch_info else 0,
+            'patch_date': patch_info['patch_date'] if patch_info else None
         }
         
         self.logger.info(f"Pipeline completed in {duration:.2f}s")
         self.logger.info(f"Processed {summary['total_matches_processed']} matches total")
         self.logger.info(f"API calls used: {self.api_calls_used}/{self.daily_api_limit}")
+        self.logger.info(f"Constants check: {constants_result}")
+        if patch_info:
+            self.logger.info(f"Using patch {patch_info['patch_name']} (ID: {patch_info['patch_numeric_id']})")
         
         # Update topline data CSV after successful pipeline run
         if summary['success'] and summary['total_matches_processed'] > 0:
