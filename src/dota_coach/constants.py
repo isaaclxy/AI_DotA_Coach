@@ -27,9 +27,12 @@ class ConstantsTracker:
         self.snapshots_dir = Path(config.data_dirs['constants'])
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
     
-    def fetch_constants(self) -> Dict[str, Any]:
+    def fetch_constants(self, rate_limiter_func=None) -> Dict[str, Any]:
         """
         Fetch current constants from OpenDota API.
+        
+        Args:
+            rate_limiter_func: Optional function to call before each API request for rate limiting.
         
         Returns:
             Dict[str, Any]: Combined constants data from all endpoints.
@@ -39,6 +42,10 @@ class ConstantsTracker:
         
         for endpoint in self.config.constants_endpoints:
             try:
+                # Apply rate limiting if provided
+                if rate_limiter_func:
+                    rate_limiter_func()
+                    
                 url = f"{base_url}/constants/{endpoint}"
                 response = requests.get(url, timeout=30)
                 response.raise_for_status()
@@ -52,14 +59,21 @@ class ConstantsTracker:
         
         return constants_data
     
-    def get_current_patch_info(self) -> Dict[str, Any]:
+    def get_current_patch_info(self, rate_limiter_func=None) -> Dict[str, Any]:
         """
         Fetch current patch information from OpenDota API.
+        
+        Args:
+            rate_limiter_func: Optional function to call before API request for rate limiting.
         
         Returns:
             Dict[str, Any]: Current patch metadata including name, numeric ID, and date.
         """
         try:
+            # Apply rate limiting if provided
+            if rate_limiter_func:
+                rate_limiter_func()
+                
             self.logger.info("Fetching patch metadata from /constants/patch endpoint")
             url = f"{self.config.api_base_url}/constants/patch"
             response = requests.get(url, timeout=30)
@@ -94,13 +108,14 @@ class ConstantsTracker:
                 'patch_date': None
             }
     
-    def save_snapshot(self, constants_data: Dict[str, Any], patch_id: str = None) -> str:
+    def save_snapshot(self, constants_data: Dict[str, Any], patch_id: str = None, rate_limiter_func=None) -> str:
         """
         Save constants snapshot to disk with enhanced metadata.
         
         Args:
             constants_data (Dict[str, Any]): Constants data to save.
             patch_id (str, optional): Patch ID. If None, fetched from patch API.
+            rate_limiter_func: Optional function to call before API request for rate limiting.
             
         Returns:
             str: Path to saved snapshot file.
@@ -109,7 +124,7 @@ class ConstantsTracker:
         datetime_captured = datetime.now(timezone.utc).isoformat()
         
         # Get current patch info
-        patch_info = self.get_current_patch_info()
+        patch_info = self.get_current_patch_info(rate_limiter_func)
         
         # Use provided patch_id or fallback to fetched patch name
         if patch_id is None:
@@ -196,23 +211,26 @@ class ConstantsTracker:
         
         return diff
     
-    def update_constants(self) -> str:
+    def update_constants(self, rate_limiter_func=None) -> str:
         """
         Fetch latest constants and save snapshot only if different from last.
+        
+        Args:
+            rate_limiter_func: Optional function to call before each API request for rate limiting.
         
         Returns:
             str: Status message about the update.
         """
         try:
             # Fetch current constants
-            current_constants = self.fetch_constants()
+            current_constants = self.fetch_constants(rate_limiter_func)
             
             # Get latest snapshot for comparison
             latest_snapshot = self.get_latest_snapshot()
             
             # Always save first snapshot
             if latest_snapshot is None:
-                filepath = self.save_snapshot(current_constants)
+                filepath = self.save_snapshot(current_constants, rate_limiter_func=rate_limiter_func)
                 return f"Saved initial constants snapshot: {filepath}"
             
             # Extract patch ID from current constants for comparison
@@ -233,7 +251,7 @@ class ConstantsTracker:
             if diff['patch_change'] or any(
                 change['changed'] for change in diff['endpoint_changes'].values()
             ):
-                filepath = self.save_snapshot(current_constants, current_patch_id)
+                filepath = self.save_snapshot(current_constants, current_patch_id, rate_limiter_func)
                 self.logger.info(f"Constants changed - saved new snapshot: {filepath}")
                 return f"Saved updated constants snapshot: {filepath}"
             else:
