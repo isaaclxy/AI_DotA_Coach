@@ -486,17 +486,7 @@ class MatchPipeline:
                 self.logger.warning("API limit reached after earliest time query")
                 return []
             
-            # Step 3: Build deduplication list
-            exclude_ids = self.build_deduplication_list(earliest_time)
-            
-            # Step 4: Build exclusion condition
-            if exclude_ids:
-                exclude_list = ','.join(map(str, exclude_ids))
-                exclude_condition = f"AND match_id NOT IN ({exclude_list})"
-            else:
-                exclude_condition = ""
-            
-            # Step 5: Enhanced discovery query with hero filtering
+            # Step 3: Enhanced discovery query with hero filtering (no exclusion in SQL)
             discovery_query = f"""
             SELECT match_id, start_time
             FROM {source}
@@ -505,14 +495,34 @@ class MatchPipeline:
             AND lobby_type = 7
             AND game_mode = 22
             AND {hero_filter_condition}
-            {exclude_condition}
             ORDER BY start_time DESC
             LIMIT {batch_size}
             """
             
             matches = self.query_explorer_api(discovery_query)
-            self.logger.info(f"Discovered {len(matches)} new matches from {source}")
-            return matches
+            
+            # Step 4: Filter out matches we already have locally
+            if matches:
+                # Build deduplication set for efficient lookup
+                exclude_ids = self.build_deduplication_list(earliest_time)
+                exclude_set = set(exclude_ids)
+                
+                # Filter out matches we already have
+                filtered_matches = []
+                for match in matches:
+                    try:
+                        match_id = int(match['match_id'])
+                        if match_id not in exclude_set:
+                            filtered_matches.append(match)
+                    except (ValueError, KeyError):
+                        self.logger.warning(f"Invalid match data in API response: {match}")
+                        continue
+                
+                self.logger.info(f"Discovered {len(matches)} potential matches, {len(filtered_matches)} new after deduplication")
+                return filtered_matches
+            else:
+                self.logger.info(f"Discovered 0 new matches from {source}")
+                return matches
             
         except Exception as e:
             self.logger.error(f"Error discovering new matches from {source}: {e}")
